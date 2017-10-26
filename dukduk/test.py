@@ -30,11 +30,13 @@ def main():
     count = 0
     index = 0
     for row in train.iterrows():
-        print(row)
+        # print(row)
         index += 1
+        print(row[1]['entity'])
         print("answer:  {}".format(row[1]['wikipedia_link']))
-        res = entity_to_page(row[1]['entity'], row[1]['text'], abstracts, row[1]['wikipedia_link'], row[0]-1)
-        print("predict: {}".format(res[1]))
+        print("\ncontext: {}".format(row[1]['text']))
+        res = entity_to_page(row[1]['entity'], row[1]['text'], abstracts, row[1]['wikipedia_link'], row[0] - 1)
+        print("\npredict: {}".format(res[1]))
         ans = row[1]['wikipedia_link']
         if res[1] == ans:
             count += 1
@@ -42,11 +44,13 @@ def main():
             # print("answer:  {}".format(row[1]['wikipedia_link']))
             # if index % 10 == 0:row[1]['wikipedia_link']
         elif pd.isnull(res[1]) and pd.isnull(ans):
-            count +=1
-        # if index == 100:
-        #     break
+            count += 1
+        print("=============================================")
+        if index == 100:
+            break
 
     print(count, "/", index)
+
 
 def calculate_tfidf():
     df = pd.read_csv("NEDDataHack2017_train.tsv", header=0, sep="\t")

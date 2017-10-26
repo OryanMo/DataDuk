@@ -26,12 +26,6 @@ def disambiguate_page(entity, text, abstracts, label, index):
 
     text = list(set(text.split()))
 
-    f = open("tfs_training.p", "rb")
-    tfs = pickle.load(f)
-    g = open("tfidf_training.p", "rb")
-    tfidf = pickle.load(g)
-    features = tfidf.get_feature_names()
-
     # entry_counter = {i: 0 for i in entries.index.tolist()}
 
     # for word in text:
@@ -42,30 +36,41 @@ def disambiguate_page(entity, text, abstracts, label, index):
     # max_entry = max(entry_counter.items(), key=operator.itemgetter(1))[0]
 
     #withouf tfidf
-    # counts = entries['Abstract'].str.count("|".join(text))
+    counts = entries['Abstract'].str.count("|".join(text))
 
 
 
     # with tfidf
-    counts = np.zeros((len(entries), 1))
-    for word in text:
-        entity_index = features.index(word) if word in features else -1
-        if entity_index >= 0:
-            entity_tfidf = tfs[index, entity_index]
-        else:
-            entity_tfidf = 1
-        counts += (entity_tfidf**2) * np.array([entries['Abstract'].str.count(word)]).T
+    # f = open("tfs_training.p", "rb")
+    # tfs = pickle.load(f)
+    # g = open("tfidf_training.p", "rb")
+    # tfidf = pickle.load(g)
+    # features = tfidf.get_feature_names()
+    # counts = np.zeros((len(entries), 1))
+    # for word in text:
+    #     entity_index = features.index(word) if word in features else -1
+    #     if entity_index >= 0:
+    #         entity_tfidf = tfs[index, entity_index]
+    #     else:
+    #         entity_tfidf = 1
+    #     counts += (entity_tfidf**2) * np.array([entries['Abstract'].str.count(word)]).T
     # if pd.isnull(label):
     #     print(counts)
 
-    if counts.max() < 1:
+    if counts.max() < 3 or pd.isnull(counts.argmax()):
         max_entry = np.nan
         link = np.nan
     else:
-        max_entry = entries.iloc[counts.argmax()].name
+        # print("======")
+        # print(counts)
+        # print("======")
+        # print(counts.argmax())
+        # print("======")
+        # print(entries.loc[counts.argmax()])
+        max_entry = entries.loc[counts.argmax()].name
         link = prefix + max_entry
 
-    return (max_entry, link)
+    return max_entry, link
 
 
 def stem_tokens(tokens, stemmer):
