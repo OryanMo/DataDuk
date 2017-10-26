@@ -27,7 +27,7 @@ def get_abstract_for_name(name):
 
 def get_names_for_term(term):
     retval = df.loc[df.index.get_level_values(0) == term].index.get_level_values(1).tolist()
-    if len(retval) == 0:
+    if len(retval) == 0 or pd.isnull(retval):
         retval = get_names_for_term_web(term)
         for name in retval:
             df.ix[(term, name), "Abstract"] = None
