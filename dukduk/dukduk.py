@@ -1,45 +1,113 @@
 from pandas import read_csv
+import pandas as pd
 import re
+import nltk
+import time
 import operator
+from nltk.corpus import stopwords
+import numpy as np
+import pickle
 
-abstract_path = ""
-pages_path = ""
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.stem.porter import PorterStemmer
+
+abstract_path = "../multindex.csv"
+pages_path = "../allwords.csv"
 
 prefix = "https://en.wikipedia.org/wiki/"
 SINGLE_PAGE = 1
 
 
-def disambiguate_page(entity, text, abstracts):
-    entries = abstracts.loc[entity]
-    entry_counter = {i.entry: 0 for i in entries}
+def disambiguate_page(entity, text, abstracts, label, index):
+    try:
+        entries = abstracts.loc[entity]
+    except:
+        return entity, 'nan'
 
-    for word in text.split():
-        for entry in entries:
-            entry_counter[entry.entry] += count_word(word, entry.abstract)
+    text = list(set(text.split()))
 
-    max_entry = max(entry_counter.items(), key=operator.itemgetter(1))[0]
+    f = open("tfs_training.p", "rb")
+    tfs = pickle.load(f)
+    g = open("tfidf_training.p", "rb")
+    tfidf = pickle.load(g)
+    features = tfidf.get_feature_names()
 
-    return {max_entry: entries[entries.entry == max_entry].wikipedia_link}
+    # entry_counter = {i: 0 for i in entries.index.tolist()}
+
+    # for word in text:
+    # for entry in entries.iterrows():
+    # print(entry)
+    # entry_counter[entry[0]] += count_word(word, entry[1].values[0])
+
+    # max_entry = max(entry_counter.items(), key=operator.itemgetter(1))[0]
+
+    #withouf tfidf
+    # counts = entries['Abstract'].str.count("|".join(text))
+
+
+
+    # with tfidf
+    counts = np.zeros((len(entries), 1))
+    for word in text:
+        entity_index = features.index(word) if word in features else -1
+        if entity_index >= 0:
+            entity_tfidf = tfs[index, entity_index]
+        else:
+            entity_tfidf = 1
+        counts += (entity_tfidf**2) * np.array([entries['Abstract'].str.count(word)]).T
+    # if pd.isnull(label):
+    #     print(counts)
+
+    if counts.max() < 1:
+        max_entry = np.nan
+        link = np.nan
+    else:
+        max_entry = entries.iloc[counts.argmax()].name
+        link = prefix + max_entry
+
+    return (max_entry, link)
+
+
+def stem_tokens(tokens, stemmer):
+    stemmed = []
+    for item in tokens:
+        stemmed.append(stemmer.stem(item))
+    return stemmed
+
+
+def tokenize(text):
+    stemmer = PorterStemmer()
+    tokens = nltk.word_tokenize(text)
+    stems = stem_tokens(tokens, stemmer)
+    return stems
 
 
 def count_word(word, abstract):
+    if pd.isnull(abstract):
+        return 0
     return sum(1 for _ in re.finditer(r'\b%s\b' % re.escape(word), abstract))
 
 
-def entity_to_page(entity, text):
-    abstracts = read_csv(abstract_path, names=["entity", "entry", "abstract", "wikipedia_link"])
-    pages = read_csv(pages_path, names=["entry"])
-    abstracts.set_index("index")
+# remove label!
+def entity_to_page(entity, text, abstracts=None, label=None, index=-1):
+    if abstracts is None:
+        abstracts = read_csv(abstract_path, encoding="utf-8", index_col=["Entity", "Name"])
+        abstracts['Abstract'] = abstracts['Abstract'].str.lower()
+
+    # stopswords = set(stopwords.words('english'))
+    # abstracts["text"] = abstracts["text"].apply(lambda x: " ".join(word for word in x.split() if word.lower() not in stopwords))
+
+    # pages = read_csv(pages_path, names=["entry"])
 
     # Check entity exist
-    if not check_entity_exists(entity, pages):
-        return "entity doesn't exists"
+
     # Check whether disambiguation is needed
-    elif check_entity_single_page(entity, abstracts):
-        return {"word": prefix + entity}
+    if check_entity_single_page(entity, abstracts):
+        return ("word", prefix + entity)
     # disambiguate term
     else:
-        return disambiguate_page(entity, text, abstracts)
+        return disambiguate_page(entity, text, abstracts, label, index)
+        # return {entity: "entity doesn't exists"}
 
 
 def check_entity_exists(word, pages):
@@ -47,13 +115,18 @@ def check_entity_exists(word, pages):
 
 
 def check_entity_single_page(entity, abstracts):
-    return len(abstracts.loc[entity].shape) == SINGLE_PAGE
+    try:
+        ret = len(abstracts.loc[entity].shape) == SINGLE_PAGE
+        return ret
+    except:
+        return False
 
 
 def main():
     entity = ""
     text = ""
     entity_to_page(entity, text)
+
 
 
 if __name__ == "__main__":
