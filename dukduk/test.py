@@ -8,6 +8,7 @@ import numpy as np
 import nltk
 import pickle
 from sklearn.feature_extraction.text import TfidfVectorizer
+import similarity as sm
 from nltk.stem.porter import PorterStemmer
 
 abstract_path = "../multindex.csv"
@@ -29,13 +30,14 @@ def main():
 
     count = 0
     index = 0
+    word2vec_model = sm.read_model()
     for row in train.iterrows():
         # print(row)
         index += 1
         print(row[1]['entity'])
         print("answer:  {}".format(row[1]['wikipedia_link']))
         print("\ncontext: {}".format(row[1]['text']))
-        res = entity_to_page(row[1]['entity'], row[1]['text'], abstracts, row[1]['wikipedia_link'], row[0] - 1)
+        res = entity_to_page(word2vec_model, row[1]['entity'], row[1]['text'], abstracts, row[1]['wikipedia_link'], row[0] - 1)
         print("\npredict: {}".format(res[1]))
         ans = row[1]['wikipedia_link']
         if res[1] == ans:
@@ -46,10 +48,10 @@ def main():
         elif pd.isnull(res[1]) and pd.isnull(ans):
             count += 1
         print("=============================================")
-        if index == 100:
-            break
+        if index % 10 == 0:
+            print(count, "/", index, "=", count/index)
 
-    print(count, "/", index)
+    print("Fianl result: ", count, "/", index)
 
 
 def calculate_tfidf():
