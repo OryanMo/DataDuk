@@ -8,7 +8,7 @@ from nltk.corpus import stopwords
 import numpy as np
 import pickle
 import similarity as sm
-
+from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.stem.porter import PorterStemmer
 
@@ -53,23 +53,26 @@ def disambiguate_page_with_similarity(model, entity, text, abstracts, label, ind
 
 def disambiguate_page(entity, text, abstracts, label, index):
     try:
-        entries = abstracts.loc[entity]
+        names = abstracts.get_names_for_term(entity)
     except:
         return entity, 'nan'
 
     text = list(set(text.split()))
 
-    # entry_counter = {i: 0 for i in entries.index.tolist()}
+    # entry_counter = {i: 0 for i in names.index.tolist()}
 
     # for word in text:
-    # for entry in entries.iterrows():
+    # for entry in names.iterrows():
     # print(entry)
     # entry_counter[entry[0]] += count_word(word, entry[1].values[0])
 
     # max_entry = max(entry_counter.items(), key=operator.itemgetter(1))[0]
 
     #withouf tfidf
-    counts = entries['Abstract'].str.count("|".join(text))
+    counts = []
+    reg = "\\b" + "\\b|\\b".join(text) + "\\b"
+    for name in names:
+        counts.append({name: lenr(e.findall(reg, abstracts.get_abstract_for_name(name)))})
 
 
 
@@ -90,7 +93,9 @@ def disambiguate_page(entity, text, abstracts, label, index):
     # if pd.isnull(label):
     #     print(counts)
 
-    if counts.max() < 5 or pd.isnull(counts.argmax()):
+    maxkey = max(counts.iteritems(), key=operator.itemgetter(1))[0]
+    maxval = max(counts.values())
+    if maxval < 3 or pd.isnull(maxval):
         max_entry = np.nan
         link = np.nan
     else:
@@ -100,7 +105,7 @@ def disambiguate_page(entity, text, abstracts, label, index):
         # print(counts.argmax())
         # print("======")
         # print(entries.loc[counts.argmax()])
-        max_entry = entries.loc[counts.argmax()].name
+        max_entry = maxkey
         link = prefix + max_entry
 
     return max_entry, link
@@ -154,7 +159,7 @@ def check_entity_exists(word, pages):
 
 def check_entity_single_page(entity, abstracts):
     try:
-        ret = len(abstracts.loc[entity].shape) == SINGLE_PAGE
+        ret = len(abstracts.get_names_for_term(entity)) == SINGLE_PAGE
         return ret
     except:
         return False
