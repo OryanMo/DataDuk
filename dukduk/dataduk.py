@@ -3,6 +3,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 import time
+import numpy as np
 
 # self.df = pd.read_csv("test.csv", encoding="utf-8", index_col=["Term", "Name"])
 
@@ -15,29 +16,52 @@ class Abstracts():
     def __init__(self, path):
         self.path = path
         self.df = pd.read_csv(self.path, encoding="utf-8", index_col=["Term", "Name"])
+        # self.df.fillna(value=np.NaN, inplace=True)
+        # self.df.to_csv(self.path, encoding="utf-8")
 
+        # print("2-00349583094509@*#$_)(@#*$_)(@#*4")
+        # time.sleep(5)
     def update_csv(self):
-        self.df.to_csv(self.path, encoding="utf-8")
-
+        try:
+            print("Wow")
+            self.df.to_csv(self.path, encoding="utf-8")
+        except (KeyboardInterrupt, SystemExit):
+            print("Wow after KeyboardInterrupt")
+            self.df.to_csv(self.path, encoding="utf-8")
 
     def get_abstract_for_name(self, name):
-        retval = self.df.loc[self.df.index.get_level_values(1) == name]["Abstract"].tolist()[0]
-        if retval == "" or pd.isnull(retval):
+        retval = self.df.loc[self.df.index.get_level_values(1) == name]["Abstract"]
+        if retval.empty or retval.isnull().any():
             retval = self.get_abstract_for_name_web(name)
+            if retval.strip() == "":
+                retval = "NoVal"
             self.df.loc[self.df.index.get_level_values(1) == name, "Abstract"] = retval
-            update_csv()
-        return retval
+            # self.update_csv()
+        return self.df.loc[self.df.index.get_level_values(1) == name, "Abstract"]
 
 
     def get_names_for_term(self, term):
-        retval = self.df.loc[self.df.index.get_level_values(0) == term].index.get_level_values(1).tolist()
-        if len(retval) == 0 or pd.isnull(retval):
+        retval = self.df.loc[self.df.index.get_level_values(0) == term]
+        if len(retval) == 0 or retval.empty:
             retval = self.get_names_for_term_web(term)
             for name in retval:
-                self.df.ix[(term, name), "Abstract"] = None
+                a = self.df.loc[(term, name), "Abstract"] = np.NaN
 
-            update_csv()
+            self.update_csv()
         return retval
+
+    def get_abstracts_for_term(self, term):
+        retval = self.df.loc[self.df.index.get_level_values(0) == term]
+        if len(retval) == 0:# or pd.isnull(retval) or retval.empty:
+            retval = self.get_names_for_term_web(term)
+        if retval["Abstract"].isnull().values.any():
+            # self.df.drop("Abstract", level=1, inplace=True)
+            # self.update_csv()
+            for i, name in retval[retval["Abstract"].isnull()].iterrows():
+                self.get_abstract_for_name(i[1]).values[0]
+                # self.df.loc[self.df.index.get_level_values(1) == i[1], "Abstract"] = self.get_abstract_for_name(i[1])
+            self.update_csv()
+        return self.df.loc[self.df.index.get_level_values(0) == term]
 
 
     def get_abstract_for_term_and_name(self, term, name):
@@ -82,5 +106,5 @@ class Abstracts():
     def get_names_for_term_web(self, term):
         content = requests.get(link_prefix + term).content
         soup = BeautifulSoup(content, "lxml")
-        a = soup.select("div.mw-parser-output > ul > li > a")
-        return [i["href"].split("/")[-1] for i in a]
+        a = soup.select("div.mw-parser-output  ul  li  a")
+        return pd.Series([i["href"].split("/")[-1] for i in a])

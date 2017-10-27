@@ -15,7 +15,7 @@ from dataduk import Abstracts
 
 
 def main():
-    train = read_csv("NEDDataHack2017_train.tsv", names=["entity", "disambig_term", "text", "wikipedia_link"], sep='\t',
+    train = read_csv("../../Files/NEDDataHack2017_train.tsv", names=["entity", "disambig_term", "text", "wikipedia_link"], sep='\t',
                      header=0)
     stopswords = set(stopwords.words('english'))
     train["text"] = train["text"].apply(
@@ -26,7 +26,7 @@ def main():
     # train.dropna(axis=0, how='any', inplace=True)
 
     # abstracts = read_csv(abstract_path, encoding="utf-8", index_col=["Entity", "Name"])
-    abstracts = Abstracts("../test.csv")
+    abstracts = Abstracts("../testnew.csv")
     abstracts.df['Abstract'] = abstracts.df['Abstract'].str.lower()
 
     count = 0
@@ -48,14 +48,14 @@ def main():
         elif pd.isnull(res[1]) and pd.isnull(ans):
             count += 1
         print("=============================================")
-        if index == 100:
+        if index == 500:
             break
 
     print(count, "/", index)
 
 
 def calculate_tfidf():
-    df = pd.read_csv("NEDDataHack2017_train.tsv", header=0, sep="\t")
+    df = pd.read_csv("../../Files/NEDDataHack2017_train.tsv", header=0, sep="\t")
     textCol = df['text'].str.lower().to_string(index=False)
     textCol = str.replace(textCol, '<p>', " ")
     import string

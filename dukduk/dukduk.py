@@ -37,10 +37,12 @@ def disambiguate_page(entity, text, abstracts, label, index):
     # max_entry = max(entry_counter.items(), key=operator.itemgetter(1))[0]
 
     #withouf tfidf
-    counts = []
-    reg = "\\b" + "\\b|\\b".join(text) + "\\b"
-    for name in names:
-        counts.append({name: lenr(e.findall(reg, abstracts.get_abstract_for_name(name)))})
+    counts = abstracts.get_abstracts_for_term(entity)["Abstract"].str.count("|".join(text))
+
+    # counts = []
+    # reg = "\\b" + "\\b|\\b".join(text) + "\\b"
+    # for name in names:
+    #     counts.append({name: lenr(e.findall(reg, abstracts.get_abstract_for_name(name)))})
 
 
 
@@ -61,8 +63,12 @@ def disambiguate_page(entity, text, abstracts, label, index):
     # if pd.isnull(label):
     #     print(counts)
 
-    maxkey = max(counts.iteritems(), key=operator.itemgetter(1))[0]
-    maxval = max(counts.values())
+    print(counts.argmax())
+    if pd.isnull(counts.argmax()):
+        print("@(#$*)@#($*", counts)
+        print(abstracts.get_abstracts_for_term(entity)["Abstract"])
+    maxkey = counts.argmax()[1]
+    maxval = counts.max()
     if maxval < 3 or pd.isnull(maxval):
         max_entry = np.nan
         link = np.nan
