@@ -7,8 +7,8 @@ import operator
 from nltk.corpus import stopwords
 import numpy as np
 import pickle
+import similarity as sm
 from collections import Counter
-
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.stem.porter import PorterStemmer
 
@@ -17,6 +17,38 @@ pages_path = "../allwords.csv"
 
 prefix = "https://en.wikipedia.org/wiki/"
 SINGLE_PAGE = 1
+
+def disambiguate_page_with_similarity(model, entity, text, abstracts, label, index):
+    try:
+        entries = abstracts.loc[entity]
+    except:
+        return entity, 'nan'
+    max_count = -1
+    for index, row in entries.iterrows():
+        #print(index)
+        #print(row)
+        if not pd.isnull(row['Abstract']):
+            abstract =  list(set(row['Abstract'].split()))
+            count = sm.count_similar_words(model, 0.95, text, abstract)
+            if (count > max_count):
+                max_count = count
+                max_entry = index
+
+    if max_count < 5: # or pd.isnull(counts.argmax()):
+        max_entry = np.nan
+        link = np.nan
+    else:
+        # print("======")
+        # print(counts)
+        # print("======")
+        # print(counts.argmax())
+        # print("======")
+        # print(entries.loc[counts.argmax()])
+        # max_entry = entries.loc[counts.argmax()].name
+        link = prefix + max_entry
+
+    return max_entry, link
+
 
 
 def disambiguate_page(entity, text, abstracts, label, index):
@@ -106,7 +138,7 @@ def count_word(word, abstract):
 
 
 # remove label!
-def entity_to_page(entity, text, abstracts=None, label=None, index=-1):
+def entity_to_page(model, entity, text, abstracts=None, label=None, index=-1):
     if abstracts is None:
         abstracts = read_csv(abstract_path, encoding="utf-8", index_col=["Entity", "Name"])
         abstracts['Abstract'] = abstracts['Abstract'].str.lower()
@@ -123,7 +155,7 @@ def entity_to_page(entity, text, abstracts=None, label=None, index=-1):
         return ("word", prefix + entity)
     # disambiguate term
     else:
-        return disambiguate_page(entity, text, abstracts, label, index)
+        return disambiguate_page_with_similarity(model, entity, text, abstracts, label, index)
         # return {entity: "entity doesn't exists"}
 
 
